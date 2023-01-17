@@ -1,16 +1,17 @@
 use std::net::TcpListener;
-use newsletter_service::run;
+use sqlx::{PgConnection, Connection};
+use newsletter_service::{run, configuration::get_configuration};
 
 #[tokio::test]
 async fn health_check_works() {
     // Arrange
-    let address = spawn_app();
+    let app_address = spawn_app();
     let client = reqwest::Client::new();
 
     // Act
     let response = client
         // Use the returned application address
-        .get(&format!("{}/health", &address))
+        .get(&format!("{}/health", &app_address))
         .send()
         .await
         .expect("Failed to execute request.");
@@ -23,7 +24,10 @@ async fn health_check_works() {
 #[tokio::test]
 async fn subscribe_returns_200_on_valid_form_data() {
     // Arrange
-    let address = spawn_app();
+    let app_address = spawn_app();
+    let configuration = get_configuration().expect("Failed to get configuration");
+    let connection_string = configuration.database.connection_string();
+    let connection = PgConnection::connect(&connection_string).await.expect("Failed to connect to Postgres");
     let client = reqwest::Client::new();
 
     let body = "name=Frau%20Blucher&email=f.blucher%40gmail.com";
@@ -31,7 +35,7 @@ async fn subscribe_returns_200_on_valid_form_data() {
     // Act
     let response = client
         // Use the returned application address
-        .post(&format!("{}/subscriptions", &address))
+        .post(&format!("{}/subscriptions", &app_address))
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
@@ -46,7 +50,7 @@ async fn subscribe_returns_200_on_valid_form_data() {
 #[tokio::test]
 async fn subscribe_returns_400_on_invalid_form_data() {
     // Arrange
-    let address = spawn_app();
+    let app_address = spawn_app();
     let client = reqwest::Client::new();
 
     let test_cases = vec![
@@ -58,7 +62,7 @@ async fn subscribe_returns_400_on_invalid_form_data() {
     for(body, message) in test_cases {
         // Act
         let response = client
-        .post(&format!("{}/subscriptions", &address))
+        .post(&format!("{}/subscriptions", &app_address))
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
