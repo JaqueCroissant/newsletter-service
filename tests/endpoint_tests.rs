@@ -88,17 +88,24 @@ async fn subscribe_returns_400_on_invalid_form_data() {
 }
 
 async fn spawn_app() -> TestApp {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
+    let listener = TcpListener::bind("127.0.0.1:0")
+                                    .expect("Failed to bind random port");
+
     // We retrieve the port assigned to us by the OS
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
 
-    let mut configuration = get_configuration().expect("Failed to read configuration.");
+    let mut configuration = get_configuration()
+        .expect("Failed to read configuration.");
+
     configuration.database.database_name = Uuid::new_v4().to_string();
     let connection_pool = configure_database(&configuration.database).await;
 
-    let server = run(listener, connection_pool.clone()).expect("Failed to bind address");
+    let server = run(listener, connection_pool.clone())
+        .expect("Failed to bind address");
+
     let _ = tokio::spawn(server);
+
     TestApp {
         address,
         db_pool: connection_pool,
@@ -120,6 +127,7 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
     let connection_pool = PgPool::connect(&config.connection_string())
         .await
         .expect("Failed to connect to Postgres.");
+
     sqlx::migrate!("./migrations")
         .run(&connection_pool)
         .await
